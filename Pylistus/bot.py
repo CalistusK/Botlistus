@@ -5,7 +5,8 @@ import configparser
 import feedparser
 import re
 import time
-from threading import Timer
+from time import sleep
+import threading
 
 client = discord.Client()
 config = configparser.ConfigParser()
@@ -53,7 +54,7 @@ class RSS():
 		# 		embed.set_thumbnail(url=thumb.group(0))
 		# 		await client.send_message(message.channel, embed=embed)
 				
-		if message.author.id = '71525265808826368':
+		if message.author.id == '71525265808826368':
 			if message.content.startswith('-rss'):
 				baseetag = d.etag
 				baseID = re.search('(?<=m\/).*(?=\/)', d['items'][0].link)
@@ -80,11 +81,11 @@ class RSS():
 							if newcount > 0:
 								await client.send_message(message.channel, '...and '+newcount+' more. (Checked last 20 maps)')
 
-				rt = RepeatedTimer(1, checkfeed, d.etag)
-				try:
-					sleep(600)
-				finally:
-					rt.stop()
+			rt = RepeatedTimer(1, checkfeed, d.etag)
+			try:
+				sleep(30)
+			finally:
+				rt.stop()
 
 config.read('config.ini')
 client.run (config['DiscordAPI']['Key'], bot=True)
