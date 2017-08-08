@@ -35,6 +35,37 @@ async def c(*, cardname: str):
 
 	await bot.say(match)
 
+@bot.command()
+async def p(*, cardname: str):
+
+	card = {"exact": cardname}
+	response = requests.get("https://api.scryfall.com/cards/named", params=card)
+	cardinfo = json.loads(response.text)
+
+	name = cardinfo['name'] + ' '
+	cardset = '(' + cardinfo['set'] + ')' + ' ~ '
+	price = '$' + cardinfo['usd']
+
+	match = name + cardset.upper() + price
+
+	await bot.say(match)
+
+@bot.command()
+async def ps(setname: str, *, cardname: str):
+
+	card = {"q": 'e:' + setname + ' ' + cardname}
+	response = requests.get("https://api.scryfall.com/cards/search", params=card)
+	cardinfo = json.loads(response.text)
+	carddata = cardinfo['data'][0]
+
+	name = carddata['name'] + ' '
+	cardset = '(' + carddata['set'] + ')' + ' ~ '
+	price = '$' + carddata['usd']
+
+	match = name + cardset.upper() + price
+
+	await bot.say(match)
+
 # @bot.command()
 
 # There are no provisions for sending messages <2000 characters long
