@@ -38,6 +38,22 @@ async def c(*, cardname: str):
 @bot.command()
 async def p(*, cardname: str):
 
+	card = {"q": 'usd>=0.00 ' + cardname}
+	response = requests.get("https://api.scryfall.com/cards/search", params=card)
+	cardinfo = json.loads(response.text)
+	carddata = cardinfo['data'][0]
+
+	name = carddata['name'] + ' '
+	cardset = '(' + carddata['set'] + ')' + ' ~ '
+	price = '$' + carddata['usd']
+
+	match = name + cardset.upper() + price
+
+	await bot.say(match)
+
+@bot.command()
+async def pe(*, cardname: str):
+
 	card = {"exact": cardname}
 	response = requests.get("https://api.scryfall.com/cards/named", params=card)
 	cardinfo = json.loads(response.text)
@@ -63,6 +79,24 @@ async def ps(setname: str, *, cardname: str):
 	price = '$' + carddata['usd']
 
 	match = name + cardset.upper() + price
+
+	await bot.say(match)
+
+@bot.command()
+async def pf(*, cardname: str):
+
+	card = {"fuzzy": 'usd>=0.00 ' + cardname}
+	response = requests.get("https://api.scryfall.com/cards/named", params=card)
+	cardinfo = json.loads(response.text)
+
+	if 'code' in cardinfo:
+		if cardinfo['code'] == 'not_found':
+			match = cardinfo['details']
+	else:
+		name = cardinfo['name'] + ' '
+		cardset = '(' + cardinfo['set'] + ')' + ' ~ '
+		price = '$' + cardinfo['usd']
+		match = name + cardset.upper() + price
 
 	await bot.say(match)
 
