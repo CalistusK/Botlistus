@@ -10,6 +10,18 @@ config = configparser.ConfigParser()
 bot = commands.Bot(command_prefix='.')
 
 @bot.command()
+async def mtg():
+	helplist = """ The following commands are available:\n
+	.c <cardname> - Search for the Oracle text of a card\n
+	.cn <nickname> - Search for the Oracle text of a card by nickname\n 
+	.p <cardname> - Search for the price (USD) of a card\n
+	.ps <set> <cardname> - Search for the price (USD) of a card by set\n
+	.pe <cardname> - Search for the price (USD) of a card by exact name\n
+	.pf <cardname> - Search for the price (USD) of a card by approximate name
+	"""
+	await bot.say(helplist)
+
+@bot.command()
 async def c(*, cardname: str):
 
 	card = {"name": cardname, "orderBy": 'name'}
@@ -32,6 +44,32 @@ async def c(*, cardname: str):
 		pt = ''
 
 	match = name + cost + rarity + fromset + cardtype + cardtext + pt
+
+	await bot.say(match)
+
+@bot.command()
+async def cn(*, cardname: str):
+
+	card = {"q": 'is:' + cardname}
+	response = requests.get("https://api.scryfall.com/cards/search", params=card)
+	cardinfo = json.loads(response.text)
+	carddata = cardinfo['data'][0]
+
+	name = carddata['name'] + ' '
+	if "mana_cost" in carddata:
+		cost = carddata['mana_cost'] + '\n'
+	else:
+		cost = '\n'
+	rarity = carddata['rarity'] + ' ('
+	fromset = carddata['set'] + ')\n'
+	cardtype = carddata['type_line'] + '\n'
+	cardtext = carddata['oracle_text']
+	if "power" in carddata:
+		pt = '\n' + carddata['power'] + '/' + carddata['toughness']
+	else:
+		pt = ''
+
+	match = name + cost + rarity.title() + fromset.upper() + cardtype.replace("â€”","—") + cardtext + pt
 
 	await bot.say(match)
 
