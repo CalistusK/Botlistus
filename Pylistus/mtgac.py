@@ -3,7 +3,15 @@ import configparser
 import discord
 import requests
 import json
+import re
+import logging
 from discord.ext import commands
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 client = discord.Client()
 config = configparser.ConfigParser()
@@ -24,7 +32,7 @@ def getjson(sfilter, cardname):
 
 	return carddata
 
-def cardMatch(carddata, rtype):
+def cardMatch(carddata, rtype, server):
 	if rtype == 'cardtext':
 		halves = ''
 		if carddata['layout'] in ['split', 'flip']:
@@ -71,7 +79,8 @@ def cardMatch(carddata, rtype):
 			else:
 				pt = ''
 
-			match = name + cost + rarity.title() + fromset.upper() + cardtype.replace("â€”","—") + pt + cardtext
+			match = name + emojify(cost, server).replace(' ','') + rarity.title() + fromset.upper() + cardtype.replace("â€”","—") + pt + cardtext.replace("â€”","—")
+
 	elif rtype == 'cardusd':
 		name = carddata['name'] + ' '
 		cardset = '(' + carddata['set'] + ')' + ' ~ '
@@ -81,40 +90,54 @@ def cardMatch(carddata, rtype):
 
 	return match
 
-@bot.command()
-async def c(*, cardname: str):
+def emojify(cost, server):
+	emocost = []
+	cost = cost.lower().replace("{","mana").replace("}"," ").split(' ')
+	for emo in server.emojis:
+		if emo.name in cost:
+			emocost.append(str(emo))
+
+	return ' '.join(emocost) + '\n'
+
+@bot.command(pass_context=True)
+async def c(ctx, *, cardname: str):
 	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardtext')
+	server = ctx.message.server
+	match = cardMatch(carddata, 'cardtext', server)
 
 	await bot.say(match)
 
-@bot.command()
-async def ce(*, cardname: str):
+@bot.command(pass_context=True)
+async def ce(ctx, *, cardname: str):
 	carddata = getjson('exact', cardname)
-	match = cardMatch(carddata, 'cardtext')
+	server = ctx.message.server
+	match = cardMatch(carddata, 'cardtext', server)
 
 	await bot.say(match)
 
-@bot.command()
-async def cf(*, cardname: str):
+@bot.command(pass_context=True)
+async def cf(ctx, *, cardname: str):
 	carddata = getjson('fuzzy', cardname)
-	match = cardMatch(carddata, 'cardtext')
+	server = ctx.message.server
+	match = cardMatch(carddata, 'cardtext', server)
 
 	await bot.say(match)
 
-@bot.command()
-async def cn(*, cardname: str):
+@bot.command(pass_context=True)
+async def cn(ctx, *, cardname: str):
 	cardname = 'is:' + cardname
 	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardtext')
+	server = ctx.message.server
+	match = cardMatch(carddata, 'cardtext', server)
 
 	await bot.say(match)
 
-@bot.command()
-async def cs(setname: str, *, cardname: str):
+@bot.command(pass_context=True)
+async def cs(ctx, setname: str, *, cardname: str):
 	cardname = 'e:' + setname + ' ' + cardname
 	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardtext')
+	server = ctx.message.server
+	match = cardMatch(carddata, 'cardtext', server)
 
 	await bot.say(match)
 
