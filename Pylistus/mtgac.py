@@ -91,13 +91,13 @@ def cardMatch(carddata, rtype, server):
 	return match
 
 def emojify(cost, server):
-	emocost = []
 	cost = cost.lower().replace("{","mana").replace("}"," ").split(' ')
-	for emo in server.emojis:
-		if emo.name in cost:
-			emocost.append(str(emo))
+	for idx,manasym in enumerate(cost):
+		for emo in server.emojis:
+			if emo.name == manasym:
+				cost[idx] = str(emo)
 
-	return ' '.join(emocost) + '\n'
+	return ' '.join(cost)
 
 @bot.command(pass_context=True)
 async def c(ctx, *, cardname: str):
