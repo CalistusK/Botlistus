@@ -32,7 +32,7 @@ def getjson(sfilter, cardname):
 
 	return carddata
 
-def cardMatch(carddata, rtype, server):
+def cardMatch(carddata, rtype, *server):
 	if rtype == 'cardtext':
 		halves = ''
 		if carddata['layout'] in ['split', 'flip']:
