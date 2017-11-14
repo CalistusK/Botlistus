@@ -23,28 +23,26 @@ def getjson(sfilter, cardname):
 	elif sfilter == 'q':
 		stype = 'search'
 
-	card = {sfilter: cardname}
-	response = requests.get('https://api.scryfall.com/cards/' + stype, params=card)
-	carddata = json.loads(response.text)
+	response = requests.get('https://api.scryfall.com/cards/' + stype, params={sfilter: cardname})
+	cd = json.loads(response.text)
 
 	if sfilter == 'q':
-		carddata = carddata['data'][0]
+		cd = cd['data'][0]
 
-	return carddata
+	return cd
 
-def cardMatch(carddata, rtype, server = None):
+def cardMatch(cd, rtype, server = None):
 	if rtype == 'cardtext':
 		halves = ''
-		if carddata['layout'] in ['split', 'flip']:
-			name = carddata['name'] + '\n'
-			if 'mana_cost' in carddata:
-				cost = carddata['mana_cost'] + '\n'
+		if cd['layout'] in ['split', 'flip', 'transform']:
+			if 'mana_cost' in cd:
+				cost = emojify(cd['mana_cost'], server).replace('//',' // ')
+			elif cd['layout'] == 'transform':
+				cost = emojify(cd['card_faces'][0]['mana_cost'], server)
 			else:
 				cost = ''
-			rarity = carddata['rarity'] + ' ('
-			fromset = carddata['set'] + ')\n'
 			for face in [0, 1]:
-				cardhalf = carddata['card_faces'][face]
+				cardhalf = cd['card_faces'][face]
 				halfname = '```' + cardhalf['name'] + ' '
 				if 'mana_cost' in cardhalf:
 					halfcost = cardhalf['mana_cost'] + '\n'
@@ -60,122 +58,141 @@ def cardMatch(carddata, rtype, server = None):
 				halves = halves + halfname + halfcost + halftype.replace("â€”","—") + halftext + pt + '```'
 
 				if face == 0:
+					if 'loyalty' in cd['card_faces'][0]:
+						halves = halves + 'Loyalty: ' + cardhalf['loyalty']
+					
 					halves = halves + '\n'
 
-			match = name + cost + rarity.title() + fromset.upper() + halves
+			match = '%s\n%s\n%s (%s)\n%s' % (cd['name'], cost, cd['rarity'].title(), cd['set'].upper(), halves)
 
 		else:
-			name = carddata['name'] + ' '
-			if "mana_cost" in carddata:
-				cost = carddata['mana_cost'] + '\n'
+			if "mana_cost" in cd:
+				cost = emojify(cd['mana_cost'], server)
 			else:
 				cost = '\n'
-			rarity = carddata['rarity'] + ' ('
-			fromset = carddata['set'] + ')\n'
-			cardtype = carddata['type_line'] + '\n'
-			cardtext = '```' + carddata['oracle_text'] + '```'
-			if "power" in carddata:
-				pt = carddata['power'] + '/' + carddata['toughness']
+			if "power" in cd:
+				pt = cd['power'] + '/' + cd['toughness']
 			else:
 				pt = ''
+			if "oracle_text" in cd:
+				ot = '```\n' + cd['oracle_text'].replace("â€”","—") + '```'
+			else:
+				ot = ''
+			if "loyalty" in cd:
+				pwl = 'Loyalty: ' + cd['loyalty']
+			else:
+				pwl = ''
 
-			match = name + emojify(cost, server).replace(' ','') + rarity.title() + fromset.upper() + cardtype.replace("â€”","—") + pt + cardtext.replace("â€”","—")
+			match = '%s %s\n%s (%s)\n%s\n%s%s%s' % (cd['name'], cost, cd['rarity'].title(), cd['set'].upper(), cd['type_line'].replace("â€”","—"), pt, ot, pwl)
 
 	elif rtype == 'cardusd':
-		name = carddata['name'] + ' '
-		cardset = '(' + carddata['set'] + ')' + ' ~ '
-		price = '$' + carddata['usd']
-
-		match = name + cardset.upper() + price
+		match = '%s (%s) ~ $%s' % (cd['name'], cd['set'].upper(), cd['usd'])
 
 	return match
 
 def emojify(cost, server):
-	cost = cost.lower().replace("{","mana").replace("}"," ").split(' ')
+	cost = cost.lower().replace("{","mana").replace("}"," ").replace("/","").split(' ')
+	cost = list(filter(None, cost))
 	for idx,manasym in enumerate(cost):
 		for emo in server.emojis:
 			if emo.name == manasym:
 				cost[idx] = str(emo)
 
-	return ' '.join(cost)
+	return ''.join(cost)
 
 @bot.command(pass_context=True)
 async def c(ctx, *, cardname: str):
-	carddata = getjson('q', cardname)
+	cd = getjson('q', cardname)
 	server = ctx.message.server
-	match = cardMatch(carddata, 'cardtext', server)
+	match = cardMatch(cd, 'cardtext', server)
 
 	await bot.say(match)
 
 @bot.command(pass_context=True)
 async def ce(ctx, *, cardname: str):
-	carddata = getjson('exact', cardname)
+	cd = getjson('exact', cardname)
 	server = ctx.message.server
-	match = cardMatch(carddata, 'cardtext', server)
+	match = cardMatch(cd, 'cardtext', server)
 
 	await bot.say(match)
 
 @bot.command(pass_context=True)
 async def cf(ctx, *, cardname: str):
-	carddata = getjson('fuzzy', cardname)
+	cd = getjson('fuzzy', cardname)
 	server = ctx.message.server
-	match = cardMatch(carddata, 'cardtext', server)
+	match = cardMatch(cd, 'cardtext', server)
 
 	await bot.say(match)
 
 @bot.command(pass_context=True)
 async def cn(ctx, *, cardname: str):
 	cardname = 'is:' + cardname
-	carddata = getjson('q', cardname)
+	cd = getjson('q', cardname)
 	server = ctx.message.server
-	match = cardMatch(carddata, 'cardtext', server)
+	match = cardMatch(cd, 'cardtext', server)
 
 	await bot.say(match)
 
 @bot.command(pass_context=True)
 async def cs(ctx, setname: str, *, cardname: str):
 	cardname = 'e:' + setname + ' ' + cardname
-	carddata = getjson('q', cardname)
+	cd = getjson('q', cardname)
 	server = ctx.message.server
-	match = cardMatch(carddata, 'cardtext', server)
+	match = cardMatch(cd, 'cardtext', server)
 
 	await bot.say(match)
 
 @bot.command()
-async def p(*, cardname: str):
-	cardname = 'usd>=0.00 ' + cardname
-	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardusd')
+async def p(*, cardname=''):
+	global latestcard
+	if cardname == '':
+		cardname = latestcard
+	else:
+		cardname = 'usd>=0.00 ' + cardname
+		cd = getjson('q', cardname)
+		match = cardMatch(cd, 'cardusd')            	
 
 	await bot.say(match)
 
 @bot.command()
-async def pe(*, cardname: str):
-	carddata = getjson('exact', cardname)
-	match = cardMatch(carddata, 'cardusd')
+async def pe(*, cardname=''):
+	if cardname == '':
+		cardname = latestcard
+	else:
+		cd = getjson('exact', cardname)
+		match = cardMatch(cd, 'cardusd')
 
 	await bot.say(match)
 
 @bot.command()
-async def pf(*, cardname: str):
-	carddata = getjson('fuzzy', cardname)
-	match = cardMatch(carddata, 'cardusd')
+async def pf(*, cardname=''):
+	if cardname == '':
+		cardname = latestcard
+	else:
+		cd = getjson('fuzzy', cardname)
+		match = cardMatch(cd, 'cardusd')
 
 	await bot.say(match)
 
 @bot.command()
-async def pn(*, cardname: str):
-	cardname = 'is:' + cardname
-	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardusd')
+async def pn(*, cardname=''):
+	if cardname == '':
+		cardname = latestcard
+	else:
+		cardname = 'is:' + cardname
+		cd = getjson('q', cardname)
+		match = cardMatch(cd, 'cardusd')
 
 	await bot.say(match)
 
 @bot.command()
-async def ps(setname: str, *, cardname: str):
-	cardname = 'e:' + setname + ' ' + cardname
-	carddata = getjson('q', cardname)
-	match = cardMatch(carddata, 'cardusd')
+async def ps(setname: str, *, cardname=''):
+	if cardname == '':
+		cardname = latestcard
+	else:
+		cardname = 'e:' + setname + ' ' + cardname
+		cd = getjson('q', cardname)
+		match = cardMatch(cd, 'cardusd')
 
 	await bot.say(match)
 
