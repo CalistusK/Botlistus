@@ -7,18 +7,17 @@ import re
 import logging
 from discord.ext import commands
 
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+# logger = logging.getLogger('discord')
+# logger.setLevel(logging.DEBUG)
+# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+# logger.addHandler(handler)
 
-client = discord.Client()
 config = configparser.ConfigParser()
 bot = commands.Bot(command_prefix='.')
 
 def getjson(sfilter, cardname):
-	if sfilter == 'exact' or sfilter == 'fuzzy':
+	if sfilter in ['exact','fuzzy']:
 		stype = 'named'
 	elif sfilter == 'q':
 		stype = 'search'
@@ -102,7 +101,7 @@ def emojify(cost, server):
 
 @bot.command(pass_context=True)
 async def c(ctx, *, cardname: str):
-	cd = getjson('q', cardname)
+	cd = getjson('fuzzy', cardname)
 	server = ctx.message.server
 	match = cardMatch(cd, 'cardtext', server)
 
@@ -111,14 +110,6 @@ async def c(ctx, *, cardname: str):
 @bot.command(pass_context=True)
 async def ce(ctx, *, cardname: str):
 	cd = getjson('exact', cardname)
-	server = ctx.message.server
-	match = cardMatch(cd, 'cardtext', server)
-
-	await bot.say(match)
-
-@bot.command(pass_context=True)
-async def cf(ctx, *, cardname: str):
-	cd = getjson('fuzzy', cardname)
 	server = ctx.message.server
 	match = cardMatch(cd, 'cardtext', server)
 
@@ -144,13 +135,13 @@ async def cs(ctx, setname: str, *, cardname: str):
 
 @bot.command()
 async def p(*, cardname=''):
-	global latestcard
 	if cardname == '':
 		cardname = latestcard
 	else:
-		cardname = 'usd>=0.00 ' + cardname
-		cd = getjson('q', cardname)
-		match = cardMatch(cd, 'cardusd')            	
+		cd = getjson('fuzzy', cardname)
+		match = cardMatch(cd, 'cardusd')
+		#Consider using printing search URI to always retrieve a USD price if possible.
+		#Ex: https://api.scryfall.com/cards/search?q=%2B%2B!%22Austere+Command%22
 
 	await bot.say(match)
 
@@ -160,16 +151,6 @@ async def pe(*, cardname=''):
 		cardname = latestcard
 	else:
 		cd = getjson('exact', cardname)
-		match = cardMatch(cd, 'cardusd')
-
-	await bot.say(match)
-
-@bot.command()
-async def pf(*, cardname=''):
-	if cardname == '':
-		cardname = latestcard
-	else:
-		cd = getjson('fuzzy', cardname)
 		match = cardMatch(cd, 'cardusd')
 
 	await bot.say(match)
@@ -197,4 +178,4 @@ async def ps(setname: str, *, cardname=''):
 	await bot.say(match)
 
 config.read('config.ini')
-bot.run(config['DiscordAPI']['Key'])
+bot.run(config['DiscordAPI']['Key'],Reconnect=True)
